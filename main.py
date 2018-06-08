@@ -6,6 +6,7 @@ from classifier.CNNClassifier import CNNClassifier
 from classifier.ConstantClassifier import ConstantClassifier
 from classifier.RFClassifier import RFClassifier
 from classifier.SNNClassifier import SNNClassifier
+from classifier.LinearClassifier import LinearClassifier
 import numpy as np
 
 SAVE = True
@@ -17,16 +18,19 @@ def main(args=None):
         args = ["cnn"]
     if args[0] == "const":
         classifier = ConstantClassifier()  # ConstantClassifier
-        features_with_label = files_to_features_with_labels(list_audio_files(AUDIO_FILES_DIR), one_d=True)
+        features_with_label = files_to_features_with_labels(list_files(AUDIO_FILES_DIR), one_d=True)
     elif args[0] == "f":
         classifier = RFClassifier(n_estimators=100, verbose=3)  # RandomForest
-        features_with_label = files_to_features_with_labels(list_audio_files(AUDIO_FILES_DIR), one_d=True)
+        features_with_label = files_to_features_with_labels(list_files(AUDIO_FILES_DIR), one_d=True)
     elif args[0] == "n":
-        classifier = SNNClassifier()  # Shallow NN
-        features_with_label = files_to_features_with_labels(list_audio_files(AUDIO_FILES_DIR), one_d=True)
+        classifier = SNNClassifier(num_epochs=200)  # Shallow NN
+        features_with_label = files_to_features_with_labels(list_files(AUDIO_FILES_DIR), one_d=True)
+    elif args[0] == "svc":
+        classifier = LinearClassifier(verbose=3)
+        features_with_label = files_to_features_with_labels(list_files(AUDIO_FILES_DIR), one_d=True)
     else:
-        classifier = CNNClassifier()  # CNN
-        features_with_label = files_to_features_with_labels(list_audio_files(AUDIO_FILES_DIR), one_d=False)
+        classifier = CNNClassifier(batch_size=128, num_epochs=200)  # CNN
+        features_with_label = files_to_features_with_labels(list_files(AUDIO_FILES_DIR), one_d=False)
     print("Finished loading/creating features")
     features = np.asarray(list(map(lambda t: t[0], features_with_label)))
     labels = np.asarray(list(map(lambda t: t[1], features_with_label)))
@@ -39,6 +43,8 @@ def main(args=None):
             classifier.save(MODELS_DIR + classifier.get_classifier_name() + DUMP_EXT)
 
     predictions = classifier.predict(x_test)
+    if not os.path.isdir(OUTPUT_DIR):
+        os.mkdir(OUTPUT_DIR)
     with open(OUTPUT_DIR + classifier.get_classifier_name() + "_output.txt", "w") as output_file:
         output_file.writelines([str(pred) + "\n" for pred in predictions])
     print(get_accuracy(predictions, y_test))

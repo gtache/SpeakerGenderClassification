@@ -1,10 +1,13 @@
 from classifier.Classifier import Classifier
-import numpy as np
-import keras as ks
-from keras import backend as K
-from keras.layers import *
 from Settings import *
+import numpy as np
 import os
+
+np.random.seed(seed=SEED)
+
+import keras as ks
+from keras.layers import *
+from Utils import clamp
 
 
 class SNNClassifier(Classifier):
@@ -37,10 +40,9 @@ class SNNClassifier(Classifier):
         return "SNNClassifier"
 
     def predict(self, features: np.ndarray) -> np.ndarray:
-        return np.asarray(list(map(lambda result: 1 if result > 0.5 else 0, self.get_model().predict(features,
-                                                                                                     batch_size=self.batch_size))))
+        return clamp(self.get_model().predict(features, batch_size=self.batch_size))
 
-    def train(self, features: np.ndarray, labels: np.ndarray, cv: int = None) -> None:
+    def train(self, features: np.ndarray, labels: np.ndarray) -> None:
         optimizer = ks.optimizers.Adam(lr=self.learning_rate)
         early_stop_callback = ks.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0005, patience=15, verbose=1)
         learning_rate_callback = ks.callbacks.ReduceLROnPlateau(monitor='val_loss', patience=10, verbose=1)
