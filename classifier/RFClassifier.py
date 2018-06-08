@@ -6,6 +6,7 @@ np.random.seed(seed=SEED)
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.externals import joblib
+import multiprocessing
 
 
 class RFClassifier(Classifier):
@@ -14,7 +15,8 @@ class RFClassifier(Classifier):
 
     classifier = None
 
-    def __init__(self, n_estimators: int = 10, max_depth: int = None, seed=SEED, verbose=0, n_jobs=7) -> None:
+    def __init__(self, n_estimators: int = 10, max_depth: int = None, seed=SEED, verbose=0,
+                 n_jobs=multiprocessing.cpu_count() - 1) -> None:
         self.classifier = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, random_state=seed,
                                                  verbose=verbose, n_jobs=n_jobs)
 

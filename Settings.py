@@ -10,7 +10,7 @@ LEARNING_RATE = 0.001  # Learning rate for NN
 STRIDES = (1, 1)  # Strides for Convolution
 DATA_FORMAT = "channels_last"  # Input data format
 
-# Different directories for the project
+# Various directories for the project
 MODELS_DIR = "models/"
 OUTPUT_DIR = "output/"
 DATA_DIR = "data/"
@@ -21,9 +21,9 @@ SPEAKERS_FILE = LIBRISPEECH_DIR + "SPEAKERS.TXT"  # The speakers file containing
 AUDIO_FILES_DIR = LIBRISPEECH_DIR + "dev-clean/"
 AUDIO_EXT = "flac"
 GENDERS_FILE = DATA_DIR + "Genders.txt"  # The generated genders file for easier retrieving
-TWO_D_FEATURES_WITH_LABELS_FILE = DATA_DIR + "2DFeaturesWithLabel.npy"  # The file the 2D data will be saved to
-TEMPORAL_TWO_D_FEATURES_WITH_LABELS_FILE = DATA_DIR + "Temporal2DFeaturesWithLabel.npy"  # The file the Temporal 2D data will be saved to
-ONE_D_FEATURES_WITH_LABELS_FILE = DATA_DIR + "1DFeaturesWithLabel.npy"  # The file the 1D data will be saved to
+FEATURES_WITH_LABEL_FILE = DATA_DIR + "Features_with_label.npy"  # File the file features along with their labels will be saved to
+MIN_FEATURES_FILE = DATA_DIR + "Min.npy"  # In case one would want to predict a new file
+MAX_FEATURES_FILE = DATA_DIR + "Max.npy"  # In case one would want to predict a new file
 FILE_ID_SEPARATOR = "-"
 PATH_SEPARATOR = "/"
 DUMP_EXT = ".pkl"

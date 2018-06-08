@@ -54,22 +54,19 @@ def audios_to_features(files: typing.Iterable[str]) -> np.ndarray:
     return np.asarray([audio_to_features(file) for file in files])
 
 
-def split_train_test(features: np.ndarray, labels: np.ndarray, train_size=TRAIN_PERCENT) -> (
-        np.ndarray, np.ndarray, np.ndarray, np.ndarray):
+def clamp(arr: np.ndarray, l_limit: int = 0, u_limit: int = 1) -> np.ndarray:
     """
-    Split the dataset into train and test data
-    :param features: The features to split
-    :param labels: The labels to split
-    :param train_size: The size (percentage) of the train set
-    :return: A tuple of four array (x_train, x_test, y_train, y_test)
+    Clamp values in an array to u_limit if value > (u_limit-l_limit)/2 else to l_limit
+    :param arr: the array to clamp
+    :param l_limit: lower limit
+    :param u_limit: upper limit
+    :return:
     """
-    return train_test_split(features, labels, train_size=train_size, random_state=SEED)
+    return np.fromiter(map(lambda value: u_limit if value > (u_limit - l_limit) / 2 else l_limit, arr), count=len(arr),
+                       dtype=int)
 
 
-def clamp(arr: np.ndarray) -> np.ndarray:
-    return np.fromiter(map(lambda value: 1 if value > 0.5 else 0, arr), count=len(arr), dtype=int)
-
-def file_to_features_with_labels(filename: str, one_d: bool = False) -> typing.Any:
+def file_to_features_with_labels(filename: str) -> typing.Any:
     """
     Extract features and label from an audio file
     :param filename: The filename
@@ -83,10 +80,7 @@ def file_to_features_with_labels(filename: str, one_d: bool = False) -> typing.A
         get_genders_dict()
     label = gender_dict[id]
     features = audio_to_features(filename)
-    if one_d:
-        return np.asarray(list(map(lambda sample: (sample, label), features)))
-    else:
-        return features, label
+    return features, label
 
 
 def get_accuracy(predictions: np.ndarray, labels: np.ndarray) -> float:
@@ -115,68 +109,74 @@ def flatten_features(arr: np.ndarray) -> np.ndarray:  # np.flatten doesnt seem t
     return np.asarray(flattened)
 
 
-def files_to_features_with_labels(filenames: np.ndarray, one_d: bool = False) -> np.ndarray:
+def cut_file(file_tuple: typing.Tuple) -> np.ndarray:
+    features = file_tuple[0]
+    label = file_tuple[1]
+    new_samples = []
+    while len(features) > MIN_SAMPLES_PER_FILE:
+        cut_sample = features[:MIN_SAMPLES_PER_FILE]
+        features = features[MIN_SAMPLES_PER_FILE:]
+        new_samples.append((cut_sample, label))
+    if len(features > 0):
+        padded_sample = np.pad(features, pad_width=((0, MIN_SAMPLES_PER_FILE - features.shape[0]), (0, 0)),
+                               mode='constant')
+        new_samples.append((padded_sample, label))
+    return np.asarray(new_samples)
+
+
+def files_to_features_with_labels(filenames: np.ndarray, one_d: bool = False, split_files=True) -> typing.Any:
     """
     Extracts features and labels from a list of files
     :param filenames: The filenames to use
     :param one_d: If the array is to be flattened or not
-    :return: Either an array[(features1, label1), (features2, label2) ...]
-    or an array[(sample1_1, label1), (sample1_2, label1), ... (samplen_k, labeln)]
+    :param split_files: If the features_with_label set is to be split in train/test.
+    The test will be unaltered (no padding, flattening, etc) to preserve the concept of file
+    :return: Either an array[(cut1_1, label1), (cut1_2, label1), ...] where a cut is of shape (min_samples_per_file, num_features)
+    or an array[(sample1_1, label1), (sample1_2, label1), ... (samplen_k, labeln)] where a sample is of shape (1, num_features)
+    along with None if split_files=False or an array[(features1, label1), ...] where features is of shape (samples_for_file, num_features)
     """
-    if (not one_d and os.path.isfile(TWO_D_FEATURES_WITH_LABELS_FILE)) or (
-            one_d and os.path.isfile(ONE_D_FEATURES_WITH_LABELS_FILE)):
-        return load_nparray(
-            ONE_D_FEATURES_WITH_LABELS_FILE if one_d else TWO_D_FEATURES_WITH_LABELS_FILE)
+    if os.path.isfile(FEATURES_WITH_LABEL_FILE):
+        features_with_label = load_nparray(FEATURES_WITH_LABEL_FILE)
     else:
-        if not one_d:
-            global min_shape
-
-            def cut_sample(sample: typing.Tuple) -> np.ndarray:
-                features = sample[0]
-                label = sample[1]
-                new_samples = []
-                while len(features) > min_shape:
-                    cut_sample = features[:min_shape]
-                    features = features[min_shape:]
-                    new_samples.append((cut_sample, label))
-                if len(features > 0):
-                    padded_sample = np.pad(features, pad_width=((0, min_shape - features.shape[0]), (0, 0)),
-                                           mode='constant')
-                    new_samples.append((padded_sample, label))
-                return np.asarray(new_samples)
-
-            two_d_features_with_label = np.asarray(
-                [file_to_features_with_labels(file, one_d=False) for file in filenames])
-
-            two_d_features_with_label = np.asarray(
-                list(map(lambda sample: cut_sample(sample), two_d_features_with_label)))
-            two_d_features_with_label = flatten_features(two_d_features_with_label)
-
-            # Reshape to add the channel dimension
-            two_d_features_with_label = np.asarray(list(
-                map(lambda sample: (sample[0].reshape(sample[0].shape[0], sample[0].shape[1], 1), sample[1]),
-                    two_d_features_with_label)))
-
-            save_nparray(two_d_features_with_label, TWO_D_FEATURES_WITH_LABELS_FILE)
-            return two_d_features_with_label
+        features_with_label = np.asarray([file_to_features_with_labels(file) for file in filenames])
+        if not os.path.isfile(MIN_FEATURES_FILE) or not os.path.isfile(MAX_FEATURES_FILE):
+            flattened_features = flatten_features(np.asarray(list(map(lambda t: t[0], features_with_label))))
+            min_f = flattened_features.min(axis=0)
+            save_nparray(min_f, MIN_FEATURES_FILE)
+            max_f = flattened_features.max(axis=0)
+            save_nparray(max_f, MAX_FEATURES_FILE)
         else:
-            one_d_features_with_label = np.asarray(
-                [file_to_features_with_labels(file, one_d=True) for file in filenames])
-            one_d_features_with_label = flatten_features(one_d_features_with_label)
-            save_nparray(one_d_features_with_label, ONE_D_FEATURES_WITH_LABELS_FILE)
-            return one_d_features_with_label
+            min_f = load_nparray(MIN_FEATURES_FILE)
+            max_f = load_nparray(MAX_FEATURES_FILE)
 
-    # Technically works with only one mfcc extraction but just to be sure, do it more simply
-    # Has no impact after generating the files anyway
-    #
-    # features_with_label = np.asarray([file_to_features_with_labels(file) for file in filenames])
-    # global min_shape
-    # one_d_features_with_label = flatten_features(np.asarray(
-    #     list(map(lambda t: (list(map(lambda f: (f, t[1]), t[0]))), features_with_label))))
-    # features_with_label = np.asarray(list(
-    #     map(lambda sample: (
-    #         np.pad(sample[0], pad_width=((0, 0), (0, min_shape - sample[0].shape[1])), mode='constant'), sample[1]),
-    #         features_with_label)))
+        # Normalize the features
+        features_with_label = np.asarray(list(
+            map(lambda tuple: (
+                np.asarray(list(map(lambda sample: (sample - min_f) / (max_f - min_f), tuple[0]))), tuple[1]),
+                features_with_label)))
+
+        save_nparray(features_with_label, FEATURES_WITH_LABEL_FILE)
+
+    if split_files:
+        features_with_label, test = train_test_split(features_with_label, random_state=SEED, train_size=TRAIN_PERCENT)
+    else:
+        test = None
+    if not one_d:
+        two_d_features_with_label = np.asarray(
+            list(map(lambda sample: cut_file(sample), features_with_label)))
+        two_d_features_with_label = flatten_features(two_d_features_with_label)
+
+        # Reshape to add the channel dimension
+        two_d_features_with_label = np.asarray(list(
+            map(lambda sample: (sample[0].reshape(sample[0].shape[0], sample[0].shape[1], 1), sample[1]),
+                two_d_features_with_label)))
+
+        return two_d_features_with_label, test
+    else:
+        one_d_features_with_label = flatten_features(np.asarray(list(
+            map(lambda t: np.asarray(list(map(lambda file_features: (file_features, t[1]), t[0]))),
+                features_with_label))))
+        return one_d_features_with_label, test
 
 
 def list_files(dir: str, ext=AUDIO_EXT) -> np.ndarray:
