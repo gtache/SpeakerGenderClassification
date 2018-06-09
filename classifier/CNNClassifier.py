@@ -17,7 +17,7 @@ class CNNClassifier(Classifier):
     """
     A deep Convolutional Neural Network classifier
     """
-    model: ks.models.Sequential
+    model: ks.models.Sequential = None
 
     def __init__(self,
                  validation_percentage: float = VALIDATION_PERCENT,
@@ -29,7 +29,7 @@ class CNNClassifier(Classifier):
                  kernel_size: Tuple[int, int] = KERNEL_SIZE,
                  strides: Tuple[int, int] = STRIDES) -> None:
         """
-        Instantiates a CNN with the given parameters
+        Instantiate a CNN with the given parameters
         /!\ Will be overridden if LOAD=True /!\
         :param validation_percentage: The percentage of samples to use for validation
         :param batch_size:The batch size

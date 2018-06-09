@@ -17,14 +17,14 @@ class SNNClassifier(Classifier):
     """
     A Shallow Neural Net with a single hidden layer
     """
-    model: ks.models.Sequential
+    model: ks.models.Sequential = None
 
     def __init__(self, validation_percentage: float = VALIDATION_PERCENT, batch_size: int = BATCH_SIZE,
                  num_epochs: int = NUM_EPOCHS,
                  learning_rate: float = LEARNING_RATE,
                  input_dim: int = FEATURES_NUMBER):
         """
-        Instantiates a SNN with the given parameters
+        Instantiate a SNN with the given parameters
         /!\ Will be overridden if Load=True /!\
         :param validation_percentage: The percentage of samples to use for validation
         :param batch_size: The batch size

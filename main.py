@@ -7,19 +7,18 @@ from classifier.RFClassifier import RFClassifier
 from classifier.SNNClassifier import SNNClassifier
 
 SAVE = True
-LOAD = True
+LOAD = False
 
 
 def run_for_classifier(classifier: Classifier, one_d: bool,
                        train_set: np.ndarray = None,
                        test_set: np.ndarray = None) -> None:
     """
-    Tests a given classifier
+    Test a given classifier and print the results
     :param classifier: The classifier to test
     :param one_d: If the features are to be fed flattened or not
     :param train_set: Optionally given to save time if run_for_classifier is called multiple times
     :param test_set: Optionally given to save time if run_for_classifier is called multiple times
-    :return: None
     """
     if train_set is None or test_set is None:
         train_set, test_set = files_to_features_with_labels(list_files(AUDIO_FILES_DIR), one_d=one_d, split_files=True)
@@ -27,19 +26,19 @@ def run_for_classifier(classifier: Classifier, one_d: bool,
     features_train = extract_features(train_set)
     labels_train = extract_labels(train_set)
     if not (LOAD and classifier.load(MODELS_DIR + classifier.get_classifier_name() + DUMP_EXT)):
-        print("Training classifier " + classifier.get_classifier_name())
+        print("Training " + classifier.get_classifier_name())
         classifier.train(features_train, labels_train)
         if SAVE:
             if not os.path.isdir(MODELS_DIR):
                 os.mkdir(MODELS_DIR)
             classifier.save(MODELS_DIR + classifier.get_classifier_name() + DUMP_EXT)
-            print("Saved classifier " + classifier.get_classifier_name())
+            print("Saved " + classifier.get_classifier_name())
     else:
-        print("Loaded classifier " + classifier.get_classifier_name())
+        print("Loaded " + classifier.get_classifier_name())
 
     def return_majority(arr: np.ndarray) -> int:
         """
-        Returns the majority label (0 or 1) in an array
+        Return the majority label (0 or 1) in an array
         :param arr: The array
         :return: 0 or 1
         """
@@ -90,7 +89,6 @@ def main(args=None):
     """
     Main function of the program
     :param args: The optional arguments
-    :return: None
     """
     one_d = True
 
@@ -99,11 +97,11 @@ def main(args=None):
     if args[0] == "const":
         classifier = ConstantClassifier()  # ConstantClassifier
     elif args[0] == "f":
-        classifier = RFClassifier(n_estimators=5, verbose=0)  # RandomForest
+        classifier = RFClassifier(n_estimators=200, verbose=0)  # RandomForest
     elif args[0] == "n":
         classifier = SNNClassifier(batch_size=128, num_epochs=200)  # Shallow Neural Net
     elif args[0] == "svc":
-        classifier = LinearClassifier(verbose=1)  # Linear SVM
+        classifier = LinearClassifier(c=1, verbose=1)  # Linear SVM
     else:
         classifier = CNNClassifier(batch_size=128, num_epochs=200)  # Convolutional Neural Net
         one_d = False

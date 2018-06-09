@@ -16,12 +16,11 @@ class RFClassifier(Classifier):
     """
     A Random Forest Classifier
     """
-    classifier: RandomForestClassifier
 
     def __init__(self, n_estimators: int = 10, max_depth: int = None, seed: int = SEED, verbose: int = 0,
                  n_jobs: int = multiprocessing.cpu_count() - 1) -> None:
         """
-        Instantiates a RandomForest Classifier with the given parameters
+        Instantiate a RandomForest Classifier with the given parameters
         /!\ Will be overridden if Load=True /!\
         :param n_estimators: The number of trees to build
         :param max_depth: The maximum depth of the trees

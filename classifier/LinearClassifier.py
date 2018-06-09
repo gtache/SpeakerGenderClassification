@@ -11,14 +11,13 @@ class LinearClassifier(Classifier):
     """
     A simple linear SVM classifier
     """
-    classifier: LinearSVC
 
-    def __init__(self, verbose: int = 0) -> None:
+    def __init__(self, c: float = 1.0, verbose: int = 0) -> None:
         """
-        Instantiates a Linear SVM classifier
+        Instantiate a Linear SVM classifier
         :param verbose: The level of logging to display
         """
-        self.classifier = LinearSVC(C=1, verbose=verbose, max_iter=10000)
+        self.classifier = LinearSVC(C=c, verbose=verbose, max_iter=10000)
 
     def get_classifier_name(self) -> str:
         return "LinearClassifier"

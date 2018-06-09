@@ -31,7 +31,7 @@ class Classifier(ABC):
     @abstractmethod
     def save(self, filename: str) -> None:
         """
-        Saves the classifier to a file
+        Save the classifier to a file
         :param filename: The filename to save to
         :return: None
         """
@@ -40,7 +40,7 @@ class Classifier(ABC):
     @abstractmethod
     def load(self, filename: str) -> bool:
         """
-        Loads the classifier from a file
+        Load the classifier from a file
         :param filename: The filename to load from
         :return: True if it loaded successfully, false otherwise
         """
@@ -56,7 +56,7 @@ class Classifier(ABC):
     @staticmethod
     def check_dump_exists(filename) -> bool:
         """
-        Checks if a classifier dump exists for the given filename
+        Check if a classifier dump exists for the given filename
         :param filename: The filename to check
         :return: True if it is valid, false otherwise
         """
