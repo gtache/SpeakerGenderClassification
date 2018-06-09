@@ -1,9 +1,16 @@
-from classifier.Classifier import Classifier
 import numpy as np
+
 from Settings import M_LABEL
+from Utils import inherit_docstrings
+from classifier.Classifier import Classifier
 
 
+@inherit_docstrings
 class ConstantClassifier(Classifier):
+    """
+    A classifier predicting Male for every input
+    """
+
     def get_classifier_name(self) -> str:
         return "ConstantClassifier"
 

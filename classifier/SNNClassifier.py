@@ -1,28 +1,47 @@
-from classifier.Classifier import Classifier
-from Settings import *
-import numpy as np
 import os
+
+import numpy as np
+
+from Settings import *
+from classifier.Classifier import Classifier
 
 np.random.seed(seed=SEED)
 
 import keras as ks
 from keras.layers import *
-from Utils import clamp
+from Utils import clamp, inherit_docstrings
 
 
+@inherit_docstrings
 class SNNClassifier(Classifier):
-    model = None
+    """
+    A Shallow Neural Net with a single hidden layer
+    """
+    model: ks.models.Sequential
 
-    def __init__(self, validation_percentage=VALIDATION_PERCENT, batch_size=BATCH_SIZE, num_epochs=NUM_EPOCHS,
-                 learning_rate=LEARNING_RATE,
-                 input_dim=FEATURES_NUMBER):
+    def __init__(self, validation_percentage: float = VALIDATION_PERCENT, batch_size: int = BATCH_SIZE,
+                 num_epochs: int = NUM_EPOCHS,
+                 learning_rate: float = LEARNING_RATE,
+                 input_dim: int = FEATURES_NUMBER):
+        """
+        Instantiates a SNN with the given parameters
+        /!\ Will be overridden if Load=True /!\
+        :param validation_percentage: The percentage of samples to use for validation
+        :param batch_size: The batch size
+        :param num_epochs: The maximum number of epochs to allow for training
+        :param learning_rate: The base learning rate
+        :param input_dim: The input dimension of the input layer (i.e. the number of features per sample)
+        """
         self.input_dim = input_dim
         self.learning_rate = learning_rate
         self.validation_percentage = validation_percentage
         self.batch_size = batch_size
         self.num_epochs = num_epochs
 
-    def get_model(self):
+    def get_model(self) -> ks.models.Sequential:
+        """
+        :return: The current model, or creates it if needed
+        """
         if self.model is None:
             self.model = ks.Sequential()
             self.model.add(

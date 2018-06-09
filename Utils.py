@@ -1,11 +1,14 @@
 import os
-from Settings import *
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+import sys
+import typing
+from inspect import getmembers, isfunction
+
 import librosa
 import numpy as np
-import typing
-import sys
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+
+from Settings import *
 
 gender_dict = None
 min_shape = sys.maxsize
@@ -70,15 +73,14 @@ def file_to_features_with_labels(filename: str) -> typing.Any:
     """
     Extract features and label from an audio file
     :param filename: The filename
-    :param one_d: If the data is to be returned on one dimension (flattened)
-    :return: Either an array[(sample1,label), (sample2,label) ... (samplen, label)] or a tuple (features, label)
+    :return: A feat_label_tuple (features, label)
     """
     file_path_split = filename.split(PATH_SEPARATOR)
-    id = file_path_split[len(file_path_split) - 1].split(FILE_ID_SEPARATOR)[0].strip()
+    speaker_id = file_path_split[len(file_path_split) - 1].split(FILE_ID_SEPARATOR)[0].strip()
     global gender_dict
     if gender_dict is None:
         get_genders_dict()
-    label = gender_dict[id]
+    label = gender_dict[speaker_id]
     features = audio_to_features(filename)
     return features, label
 
@@ -96,7 +98,7 @@ def get_accuracy(predictions: np.ndarray, labels: np.ndarray) -> float:
     return accuracy_score(labels, predictions)
 
 
-def flatten_features(arr: np.ndarray) -> np.ndarray:  # np.flatten doesnt seem to work
+def flatten(arr: np.ndarray) -> np.ndarray:  # np.flatten doesnt seem to work
     """
     Flattens an array containing different dimensions
     :param arr: The array to flatten
@@ -110,6 +112,12 @@ def flatten_features(arr: np.ndarray) -> np.ndarray:  # np.flatten doesnt seem t
 
 
 def cut_file(file_tuple: typing.Tuple) -> np.ndarray:
+    """
+    Cuts a file into smaller windows of equal size
+    The window size is equal to the length of the smallest file
+    :param file_tuple: The tuple (file_features, label)
+    :return: An array of (filecut_features, label) tuples
+    """
     features = file_tuple[0]
     label = file_tuple[1]
     new_samples = []
@@ -122,6 +130,24 @@ def cut_file(file_tuple: typing.Tuple) -> np.ndarray:
                                mode='constant')
         new_samples.append((padded_sample, label))
     return np.asarray(new_samples)
+
+
+def extract_features(features_with_label: np.ndarray) -> np.ndarray:
+    """
+    Extracts the features from an array of (features, label) tuples
+    :param features_with_label: The array
+    :return: An array of features
+    """
+    return np.asarray(list(map(lambda feat_label_tuple: feat_label_tuple[0], features_with_label)))
+
+
+def extract_labels(features_with_label: np.ndarray) -> np.ndarray:
+    """
+    Extracts the labels from an array of (features, label) tuples
+    :param features_with_label: The array
+    :return: An array of labels
+    """
+    return np.asarray(list(map(lambda feat_label_tuple: feat_label_tuple[1], features_with_label)))
 
 
 def files_to_features_with_labels(filenames: np.ndarray, one_d: bool = False, split_files=True) -> typing.Any:
@@ -140,7 +166,7 @@ def files_to_features_with_labels(filenames: np.ndarray, one_d: bool = False, sp
     else:
         features_with_label = np.asarray([file_to_features_with_labels(file) for file in filenames])
         if not os.path.isfile(MIN_FEATURES_FILE) or not os.path.isfile(MAX_FEATURES_FILE):
-            flattened_features = flatten_features(np.asarray(list(map(lambda t: t[0], features_with_label))))
+            flattened_features = flatten(np.asarray(list(map(lambda t: t[0], features_with_label))))
             min_f = flattened_features.min(axis=0)
             save_nparray(min_f, MIN_FEATURES_FILE)
             max_f = flattened_features.max(axis=0)
@@ -151,8 +177,9 @@ def files_to_features_with_labels(filenames: np.ndarray, one_d: bool = False, sp
 
         # Normalize the features
         features_with_label = np.asarray(list(
-            map(lambda tuple: (
-                np.asarray(list(map(lambda sample: (sample - min_f) / (max_f - min_f), tuple[0]))), tuple[1]),
+            map(lambda feat_label_tuple: (
+                np.asarray(list(map(lambda sample: (sample - min_f) / (max_f - min_f), feat_label_tuple[0]))),
+                feat_label_tuple[1]),
                 features_with_label)))
 
         save_nparray(features_with_label, FEATURES_WITH_LABEL_FILE)
@@ -164,7 +191,7 @@ def files_to_features_with_labels(filenames: np.ndarray, one_d: bool = False, sp
     if not one_d:
         two_d_features_with_label = np.asarray(
             list(map(lambda sample: cut_file(sample), features_with_label)))
-        two_d_features_with_label = flatten_features(two_d_features_with_label)
+        two_d_features_with_label = flatten(two_d_features_with_label)
 
         # Reshape to add the channel dimension
         two_d_features_with_label = np.asarray(list(
@@ -173,21 +200,22 @@ def files_to_features_with_labels(filenames: np.ndarray, one_d: bool = False, sp
 
         return two_d_features_with_label, test
     else:
-        one_d_features_with_label = flatten_features(np.asarray(list(
+        one_d_features_with_label = flatten(np.asarray(list(
             map(lambda t: np.asarray(list(map(lambda file_features: (file_features, t[1]), t[0]))),
                 features_with_label))))
         return one_d_features_with_label, test
 
 
-def list_files(dir: str, ext=AUDIO_EXT) -> np.ndarray:
+def list_files(dir_name: str, ext=AUDIO_EXT) -> np.ndarray:
     """
     Lists the files in a directory recursively for a given extension
-    :param dir: The directory to search
+    :param dir_name: The directory to search
+    :param ext: The extension of the files to search for
     :return: The array of filenames
     """
     return np.asarray(list(map(lambda path: path.replace("\\", PATH_SEPARATOR),
                                filter(lambda path: path.endswith(ext),
-                                      [os.path.join(dp, f) for dp, dn, fn in os.walk(dir) for f in fn]))))
+                                      [os.path.join(dp, f) for dp, dn, fn in os.walk(dir_name) for f in fn]))))
 
 
 def create_gender_file() -> None:
@@ -198,16 +226,16 @@ def create_gender_file() -> None:
 
     def id_gender_tuple(line: str) -> (str, int):
         """
-        Creates the (SpeakerID, Gender) tuple given a line
+        Creates the (SpeakerID, Gender) feat_label_tuple given a line
         :param line: The line to parse
-        :return: The tuple
+        :return: The feat_label_tuple
         """
         if not line.startswith(COMMENT_STARTER):
             infos = line.split(SPEAKERS_FILE_SEPARATOR)
-            id = infos[0].strip()
+            speaker_id = infos[0].strip()
             gender = infos[1].strip()
             gender_label = F_LABEL if gender == SPEAKERS_F_LABEL else M_LABEL
-            return id, gender_label
+            return speaker_id, gender_label
         else:
             return None
 
@@ -226,15 +254,24 @@ def get_genders_dict() -> typing.Dict[str, int]:
     if gender_dict is None:
         def id_gender_tuple(line: str) -> (str, int):
             """
-            Creates the (SpeakerID, Gender) tuple given a line
+            Creates the (SpeakerID, Gender) feat_label_tuple given a line
             :param line: The line to parse
-            :return: The tuple
+            :return: The feat_label_tuple
             """
             t = line.split(GENDERS_FILE_SEPARATOR)
-            id = t[0]
+            speaker_id = t[0]
             gender = int(t[1])
-            return id, gender
+            return speaker_id, gender
 
         fd = open(GENDERS_FILE, "r")
         gender_dict = dict(map(lambda line: id_gender_tuple(line), [line.rstrip() for line in fd]))
     return gender_dict
+
+
+def inherit_docstrings(cls):
+    for name, func in getmembers(cls, isfunction):
+        if func.__doc__: continue
+        for parent in cls.__mro__[1:]:
+            if hasattr(parent, name):
+                func.__doc__ = getattr(parent, name).__doc__
+    return cls
