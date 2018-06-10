@@ -5,3 +5,5 @@ tensorboard/
 output/
 .ipynb_checkpoints/
 classifier/__pycache__/
+data/Features_with_label.npy
+models/RFClassifier - n_est 100 - max_depth None.pkl
