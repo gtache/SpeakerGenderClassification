@@ -3,6 +3,13 @@ This assignment was to compare different classifiers for the gender recognition 
 The files were taken from the LibriSpeech dev-clean dataset.    
 The features used are the MFCC features extracted using librosa.
 
+## Libraries used
+- Keras 2.1.6
+- tensorflow(-gpu) 1.8.0 with cuDNN 7.0 and CUDA 9.0
+- scikit-learn 0.19.1
+- numpy 1.14.3
+- librosa 0.6.1 (needed ffmpeg bin on Path on Windows)
+
 ## File descriptions
 - GenderPredictions.ipynb is the notebook containing the report for this assignment
 - Settings.py contains program-wide settings for the assignment
