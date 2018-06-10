@@ -11,7 +11,7 @@ from classifier.RFClassifier import RFClassifier
 from classifier.SNNClassifier import SNNClassifier
 
 SAVE = True
-LOAD = False
+LOAD = True
 
 
 def run_for_classifier(classifier: Classifier, one_d: bool, cv: int = None,
@@ -36,6 +36,8 @@ def run_for_classifier(classifier: Classifier, one_d: bool, cv: int = None,
                                                test_size=1 - TRAIN_PERCENT)
     print("Finished loading/creating features")
     print("Using classifier " + classifier.get_classifier_name())
+
+    # Run cross validation
     if cv is not None and cv > 1:
         print("Running cross validation")
         cv_set = np.append(train_set, test_set, axis=0)
@@ -45,13 +47,16 @@ def run_for_classifier(classifier: Classifier, one_d: bool, cv: int = None,
             cv_set = to_2d(cv_set)
         scores = classifier.cross_validate(CV, extract_features(cv_set), extract_labels(cv_set))
         print("CV Score : Accuracy: %0.3f (+/- %0.3f)" % (scores.mean(), scores.std() * 2))
-    classifier.reset()
+        classifier.reset()
+
     if one_d:
         train_set = to_1d(train_set)
     else:
         train_set = to_2d(train_set)
+
     features_train = extract_features(train_set)
     labels_train = extract_labels(train_set)
+
     if not (load and classifier.load(MODELS_DIR + classifier.get_classifier_name() + DUMP_EXT)):
         print("Training " + classifier.get_classifier_name())
         classifier.train(features_train, labels_train)
@@ -69,15 +74,14 @@ def run_for_classifier(classifier: Classifier, one_d: bool, cv: int = None,
     test_labels = extract_labels(test_set)
     for feat_label_tuple in test_set:
         features = feat_label_tuple[0]
-        if one_d:
-            results = classifier.predict(features)
-            predictions.append(return_majority(results))
-        else:
+        if not one_d:
             features = extract_features(cut_file(feat_label_tuple))
+            # Add depth dimension
             features = np.asarray(
                 list(map(lambda sample: sample.reshape(sample.shape[0], sample.shape[1], 1), features)))
-            results = classifier.predict(features)
-            predictions.append(return_majority(results))
+
+        results = classifier.predict(features)
+        predictions.append(return_majority(results))
     predictions = np.asarray(predictions)
     if not os.path.isdir(OUTPUT_DIR):
         os.mkdir(OUTPUT_DIR)
@@ -87,15 +91,13 @@ def run_for_classifier(classifier: Classifier, one_d: bool, cv: int = None,
     # Per sample predictions
     print("Predicting on samples...")
     if one_d:
-        flattened_test_set = to_1d(test_set)
-        samples_features = extract_features(flattened_test_set)
-        samples_predictions = classifier.predict(samples_features)
-        samples_test_labels = extract_labels(flattened_test_set)
+        transformed_test_set = to_1d(test_set)
     else:
-        cut_test_set = to_2d(test_set)
-        cut_features = extract_features(cut_test_set)
-        samples_predictions = classifier.predict(cut_features)
-        samples_test_labels = extract_labels(cut_test_set)
+        transformed_test_set = to_2d(test_set)
+
+    samples_features = extract_features(transformed_test_set)
+    samples_predictions = classifier.predict(samples_features)
+    samples_test_labels = extract_labels(transformed_test_set)
 
     print("Test accuracy - files : " + str(get_accuracy(predictions, test_labels)))
     print("Test accuracy - samples : " + str(get_accuracy(samples_predictions, samples_test_labels)))

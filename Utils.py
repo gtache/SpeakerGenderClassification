@@ -223,9 +223,9 @@ def create_gender_file() -> None:
 
     def id_gender_tuple(line: str) -> (str, int):
         """
-        Creates the (SpeakerID, Gender) feat_label_tuple given a line.
+        Creates the (SpeakerID, Gender) tuple given a line.
         :param line: The line to parse
-        :return: The feat_label_tuple
+        :return: The tuple
         """
         if not line.startswith(COMMENT_STARTER):
             infos = line.split(SPEAKERS_FILE_SEPARATOR)
@@ -251,9 +251,9 @@ def get_genders_dict() -> Dict[str, int]:
     if gender_dict is None:
         def id_gender_tuple(line: str) -> (str, int):
             """
-            Create the (SpeakerID, Gender) feat_label_tuple given a line.
+            Create the (SpeakerID, Gender) tuple given a line.
             :param line: The line to parse
-            :return: The feat_label_tuple
+            :return: The tuple
             """
             t = line.split(GENDERS_FILE_SEPARATOR)
             speaker_id = t[0]
