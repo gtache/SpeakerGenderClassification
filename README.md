@@ -20,7 +20,7 @@ The features used are the MFCC features extracted using librosa.
     - SNNClassifier.py contains the Shallow Neural Network classifier
 
 - data folder
-    - Features_with_label.npy is the dump of the numpy array containing the features along with their label (as an array of tuples) (can't be pushed to github due to its size)
+    - Features_with_label.npy is the dump of the numpy array containing the features along with their label (as an array of tuples) (can't be pushed to github due to its size) - Is available here https://drive.google.com/file/d/1y_GgtTNHm5SlOLw4pH29R4EsToymf3wr/view?usp=sharing
     - Genders.txt is a simple SpeakerID to Gender label file
     - Max.npy is the dump of the maxima of the MFCC features as an array
     - Min.npy is the dump of the minima of the MFCC features as an array
