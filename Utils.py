@@ -6,17 +6,16 @@ from typing import Iterable, Tuple, Any, Dict
 import librosa
 import numpy as np
 from sklearn.metrics import accuracy_score
-from sklearn.model_selection import train_test_split
 
 from Settings import *
 
-gender_dict = None
-min_shape = sys.maxsize
+gender_dict: Dict[str, int] = None
+min_shape: int = sys.maxsize
 
 
 def audio_to_features(filename: str, n_features: int = FEATURES_NUMBER) -> np.ndarray:
     """
-    Extract MFCC features from audio file using librosa
+    Extract MFCC features from audio file using librosa.
     :param filename: The name of the file
     :param n_features: The number of features to extract
     :return: An ndarray of features
@@ -31,7 +30,7 @@ def audio_to_features(filename: str, n_features: int = FEATURES_NUMBER) -> np.nd
 
 def save_nparray(arr: np.ndarray, filename: str) -> None:
     """
-    Save a numpy array to a file
+    Save a numpy array to a file.
     :param arr: The array to save
     :param filename: The filename to use
     """
@@ -40,7 +39,7 @@ def save_nparray(arr: np.ndarray, filename: str) -> None:
 
 def load_nparray(filename: str) -> np.ndarray:
     """
-    Load a numpy array given a filename
+    Load a numpy array given a filename.
     :param filename: The filename
     :return: The array
     """
@@ -49,7 +48,7 @@ def load_nparray(filename: str) -> np.ndarray:
 
 def audios_to_features(files: Iterable[str]) -> np.ndarray:
     """
-    Extract audio features from a collection of files
+    Extract audio features from a collection of files.
     :param files: The files
     :return: An array of array of features
     """
@@ -58,7 +57,7 @@ def audios_to_features(files: Iterable[str]) -> np.ndarray:
 
 def clamp(arr: np.ndarray, lower_value: int = 0, upper_value: int = 1) -> np.ndarray:
     """
-    Clamp values in an array to upper_value if value > (upper_value-lower_value)/2 else to lower_value
+    Clamp values in an array to upper_value if value > (upper_value-lower_value)/2 else to lower_value.
     :param arr: the array to clamp
     :param lower_value: lower limit
     :param upper_value: upper limit
@@ -71,7 +70,7 @@ def clamp(arr: np.ndarray, lower_value: int = 0, upper_value: int = 1) -> np.nda
 
 def file_to_features_with_labels(filename: str) -> Any:
     """
-    Extract features and label from an audio file
+    Extract features and label from an audio file.
     :param filename: The filename
     :return: A tuple (features, label)
     """
@@ -87,7 +86,7 @@ def file_to_features_with_labels(filename: str) -> Any:
 
 def get_accuracy(predictions: np.ndarray, labels: np.ndarray) -> float:
     """
-    Return an accuracy given predictions and true labels
+    Return an accuracy given predictions and true labels.
     :param predictions: The predictions
     :param labels: The true labels
     :return: the accuracy
@@ -98,7 +97,7 @@ def get_accuracy(predictions: np.ndarray, labels: np.ndarray) -> float:
 
 def flatten(arr: Iterable) -> np.ndarray:  # np.flatten doesnt seem to work
     """
-    Flatten an array (two-level deeps, not recursively) containing different dimensions
+    Flatten an array (two-level deeps, not recursively) containing different dimensions.
     :param arr: The array to flatten
     :return: The flattened array
     """
@@ -111,20 +110,20 @@ def flatten(arr: Iterable) -> np.ndarray:  # np.flatten doesnt seem to work
 
 def cut_file(file_tuple: Tuple) -> np.ndarray:
     """
-    Cut a file into smaller windows of equal size
-    The window size is equal to the length of the smallest file
+    Cut a file into smaller windows of equal size.
+    The window size is equal to the length of the smallest file.
     :param file_tuple: The tuple (file_features, label)
     :return: An array of (filecut_features, label) tuples
     """
     features = file_tuple[0]
     label = file_tuple[1]
     new_samples = []
-    while len(features) > MIN_SAMPLES_PER_FILE:
-        cut_sample = features[:MIN_SAMPLES_PER_FILE]
-        features = features[MIN_SAMPLES_PER_FILE:]
+    while len(features) > FEATURES_WINDOW_SIZE:
+        cut_sample = features[:FEATURES_WINDOW_SIZE]
+        features = features[FEATURES_WINDOW_SIZE:]
         new_samples.append((cut_sample, label))
     if len(features > 0):
-        padded_sample = np.pad(features, pad_width=((0, MIN_SAMPLES_PER_FILE - features.shape[0]), (0, 0)),
+        padded_sample = np.pad(features, pad_width=((0, FEATURES_WINDOW_SIZE - features.shape[0]), (0, 0)),
                                mode='constant')
         new_samples.append((padded_sample, label))
     return np.asarray(new_samples)
@@ -132,7 +131,7 @@ def cut_file(file_tuple: Tuple) -> np.ndarray:
 
 def extract_features(features_with_label: Iterable) -> np.ndarray:
     """
-    Extract the features from an array of (features, label) tuples
+    Extract the features from an array of (features, label) tuples.
     :param features_with_label: The array
     :return: An array of features
     """
@@ -141,23 +140,43 @@ def extract_features(features_with_label: Iterable) -> np.ndarray:
 
 def extract_labels(features_with_label: Iterable) -> np.ndarray:
     """
-    Extract the labels from an array of (features, label) tuples
+    Extract the labels from an array of (features, label) tuples.
     :param features_with_label: The array
     :return: An array of labels
     """
     return np.asarray(list(map(lambda feat_label_tuple: feat_label_tuple[1], features_with_label)))
 
 
-def files_to_features_with_labels(filenames: Iterable[str], one_d: bool = False, split_files=True) -> Any:
+def to_2d(features_with_label: np.ndarray) -> np.ndarray:
     """
-    Extract features and labels from a list of files
+    Prepare the features to be fed to as a 2D input.
+    :param features_with_label: The features along with their label
+    :return: The transformed features along with their label
+    """
+    two_d_features_with_label = flatten(list(map(lambda sample: cut_file(sample), features_with_label)))
+
+    # Reshape to add the channel dimension
+    return np.asarray(list(
+        map(lambda sample: (sample[0].reshape(sample[0].shape[0], sample[0].shape[1], 1), sample[1]),
+            two_d_features_with_label)))
+
+
+def to_1d(features_with_label: np.ndarray) -> np.ndarray:
+    """
+    Prepare the features to be fed to as a 1D input.
+    :param features_with_label: The features along with their label
+    :return: The transformed features along with their label
+    """
+    return flatten(list(
+        map(lambda t: np.asarray(list(map(lambda file_features: (file_features, t[1]), t[0]))),
+            features_with_label)))
+
+
+def files_to_features_with_labels(filenames: Iterable[str]) -> np.ndarray:
+    """
+    Extract features and labels from a list of files.
     :param filenames: The filenames to use
-    :param one_d: If the array is to be flattened or not
-    :param split_files: If the features_with_label set is to be split in train/test.
-    The test will be unaltered (no padding, flattening, etc) to allow getting accuracy on files
-    :return: Either an array[(cut1_1, label1), (cut1_2, label1), ...] where a cut is of shape (min_samples_per_file, num_features)
-    or an array[(sample1_1, label1), (sample1_2, label1), ... (samplen_k, labeln)] where a sample is of shape (1, num_features)
-    along with None if split_files=False or an array[(features1, label1), ...] where features is of shape (samples_for_file, num_features)
+    :return: An array of (features, label) tuples
     """
     if os.path.isfile(FEATURES_WITH_LABEL_FILE):
         features_with_label = load_nparray(FEATURES_WITH_LABEL_FILE)
@@ -182,29 +201,12 @@ def files_to_features_with_labels(filenames: Iterable[str], one_d: bool = False,
 
         save_nparray(features_with_label, FEATURES_WITH_LABEL_FILE)
 
-    if split_files:
-        features_with_label, test = train_test_split(features_with_label, random_state=SEED, train_size=TRAIN_PERCENT)
-    else:
-        test = None
-    if not one_d:
-        two_d_features_with_label = flatten(list(map(lambda sample: cut_file(sample), features_with_label)))
-
-        # Reshape to add the channel dimension
-        two_d_features_with_label = np.asarray(list(
-            map(lambda sample: (sample[0].reshape(sample[0].shape[0], sample[0].shape[1], 1), sample[1]),
-                two_d_features_with_label)))
-
-        return two_d_features_with_label, test
-    else:
-        one_d_features_with_label = flatten(list(
-            map(lambda t: np.asarray(list(map(lambda file_features: (file_features, t[1]), t[0]))),
-                features_with_label)))
-        return one_d_features_with_label, test
+    return features_with_label
 
 
 def list_files(dir_name: str, ext=AUDIO_EXT) -> np.ndarray:
     """
-    List the files in a directory recursively for a given extension
+    List the files in a directory recursively for a given extension.
     :param dir_name: The directory to search
     :param ext: The extension of the files to search for
     :return: The array of filenames
@@ -216,12 +218,12 @@ def list_files(dir_name: str, ext=AUDIO_EXT) -> np.ndarray:
 
 def create_gender_file() -> None:
     """
-    Create the Genders.txt file
+    Create the Genders.txt file.
     """
 
     def id_gender_tuple(line: str) -> (str, int):
         """
-        Creates the (SpeakerID, Gender) feat_label_tuple given a line
+        Creates the (SpeakerID, Gender) feat_label_tuple given a line.
         :param line: The line to parse
         :return: The feat_label_tuple
         """
@@ -242,14 +244,14 @@ def create_gender_file() -> None:
 
 def get_genders_dict() -> Dict[str, int]:
     """
-    Return and potentially creates the dictionary (SpeakerID->Gender)
+    Return and potentially creates the dictionary (SpeakerID->Gender).
     :return: The dictionary
     """
     global gender_dict
     if gender_dict is None:
         def id_gender_tuple(line: str) -> (str, int):
             """
-            Creates the (SpeakerID, Gender) feat_label_tuple given a line
+            Create the (SpeakerID, Gender) feat_label_tuple given a line.
             :param line: The line to parse
             :return: The feat_label_tuple
             """
@@ -258,14 +260,25 @@ def get_genders_dict() -> Dict[str, int]:
             gender = int(t[1])
             return speaker_id, gender
 
+        if not os.path.isfile(GENDERS_FILE):
+            create_gender_file()
         fd = open(GENDERS_FILE, "r")
         gender_dict = dict(map(lambda line: id_gender_tuple(line), [line.rstrip() for line in fd]))
     return gender_dict
 
 
+def return_majority(arr: np.ndarray) -> int:
+    """
+    Return the majority label (0 or 1) in an array.
+    :param arr: The array
+    :return: 0 or 1
+    """
+    return 1 if np.sum(arr) > len(arr) / 2 else 0
+
+
 def inherit_docstrings(cls):
     """
-    Used to make a class inherit methods docstrings from its parent
+    Used to make a class inherit methods docstrings from its parent.
     :param cls: The class
     :return: the class
     """

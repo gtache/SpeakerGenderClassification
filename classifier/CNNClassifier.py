@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 from Settings import *
-from classifier.Classifier import Classifier
+from classifier.NNClassifier import NNClassifier
 
 np.random.seed(seed=SEED)
 import keras as ks
@@ -13,33 +13,31 @@ from typing import Tuple
 
 
 @inherit_docstrings
-class CNNClassifier(Classifier):
+class CNNClassifier(NNClassifier):
     """
-    A deep Convolutional Neural Network classifier
+    A deep Convolutional Neural Network classifier.
     """
     model: ks.models.Sequential = None
 
-    def __init__(self,
-                 validation_percentage: float = VALIDATION_PERCENT,
-                 batch_size: int = BATCH_SIZE,
-                 num_epochs: int = NUM_EPOCHS,
-                 learning_rate: float = LEARNING_RATE,
-                 input_shape: Tuple[int, int, int] = INPUT_SHAPE,
-                 filter_depth: int = FILTER_DEPTH,
-                 kernel_size: Tuple[int, int] = KERNEL_SIZE,
-                 strides: Tuple[int, int] = STRIDES) -> None:
+    def __init__(self, validation_percentage: float = VALIDATION_PERCENT, batch_size: int = BATCH_SIZE,
+                 num_epochs: int = NUM_EPOCHS, learning_rate: float = LEARNING_RATE,
+                 input_shape: Tuple[int, int, int] = INPUT_SHAPE, filter_depth: int = FILTER_DEPTH,
+                 kernel_size: Tuple[int, int] = KERNEL_SIZE, strides: Tuple[int, int] = STRIDES,
+                 verbose: int = 0) -> None:
         """
-        Instantiate a CNN with the given parameters
-        /!\ Will be overridden if LOAD=True /!\
+        Instantiate a CNN with the given parameters.
+        Will be overridden if load is called later.
         :param validation_percentage: The percentage of samples to use for validation
-        :param batch_size:The batch size
+        :param batch_size: The batch size
         :param num_epochs: The max number of epochs to allow for training
         :param learning_rate: The base learning rate
         :param input_shape: The input shape of the input layer (i.e. (window_size_x, window_size_y, num_channels))
         :param filter_depth: The filter depth for the Conv2D layers
         :param kernel_size: The kernel size for the Conv2D layers
         :param strides: The strides for the Conv2D and MaxPool2D layers
+        :param verbose: The level of logging
         """
+        super().__init__(verbose)
         self.input_shape = input_shape
         self.learning_rate = learning_rate
         self.validation_percentage = validation_percentage
@@ -50,9 +48,6 @@ class CNNClassifier(Classifier):
         self.filter_depth = filter_depth
 
     def get_model(self) -> ks.models.Sequential:
-        """
-        :return: The current model, or creates it if needed
-        """
         if self.model is None:
             self.model = ks.Sequential()
             self.model.add(BatchNormalization(momentum=0.1, input_shape=self.input_shape))
@@ -131,7 +126,7 @@ class CNNClassifier(Classifier):
         self.get_model().compile(optimizer=optimizer, loss="binary_crossentropy", metrics=["accuracy"])
 
         self.get_model().fit(x=features, y=labels, batch_size=self.batch_size, epochs=self.num_epochs,
-                             validation_split=self.validation_percentage, callbacks=callbacks)
+                             validation_split=self.validation_percentage, callbacks=callbacks, verbose=self.verbose)
 
     def save(self, filename: str) -> None:
         self.model.save(filename)

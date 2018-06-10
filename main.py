@@ -1,3 +1,7 @@
+from typing import List
+
+from sklearn.model_selection import train_test_split
+
 from Utils import *
 from classifier.CNNClassifier import CNNClassifier
 from classifier.Classifier import Classifier
@@ -10,39 +14,54 @@ SAVE = True
 LOAD = False
 
 
-def run_for_classifier(classifier: Classifier, one_d: bool,
+def run_for_classifier(classifier: Classifier, one_d: bool, cv: int = None,
                        train_set: np.ndarray = None,
-                       test_set: np.ndarray = None) -> None:
+                       test_set: np.ndarray = None,
+                       save: bool = False,
+                       load: bool = False) -> None:
     """
-    Test a given classifier and print the results
+    Test a given classifier and print the results.
     :param classifier: The classifier to test
-    :param one_d: If the features are to be fed flattened or not
+    :param one_d: If the features are to be flattened or not
+    :param cv: If >1, will run cross validation(on samples) with the given number of splits on the classifier
     :param train_set: Optionally given to save time if run_for_classifier is called multiple times
     :param test_set: Optionally given to save time if run_for_classifier is called multiple times
+    :param save: If the classifier is to be saved to a file
+    :param load: If the classifier is to be loaded from a file
     """
+
     if train_set is None or test_set is None:
-        train_set, test_set = files_to_features_with_labels(list_files(AUDIO_FILES_DIR), one_d=one_d, split_files=True)
+        features_with_label = files_to_features_with_labels(list_files(AUDIO_FILES_DIR))
+        train_set, test_set = train_test_split(features_with_label, random_state=SEED, train_size=TRAIN_PERCENT,
+                                               test_size=1 - TRAIN_PERCENT)
     print("Finished loading/creating features")
+    print("Using classifier " + classifier.get_classifier_name())
+    if cv is not None and cv > 1:
+        print("Running cross validation")
+        cv_set = np.append(train_set, test_set, axis=0)
+        if one_d:
+            cv_set = to_1d(cv_set)
+        else:
+            cv_set = to_2d(cv_set)
+        scores = classifier.cross_validate(CV, extract_features(cv_set), extract_labels(cv_set))
+        print("CV Score : Accuracy: %0.3f (+/- %0.3f)" % (scores.mean(), scores.std() * 2))
+    classifier.reset()
+    if one_d:
+        train_set = to_1d(train_set)
+    else:
+        train_set = to_2d(train_set)
     features_train = extract_features(train_set)
     labels_train = extract_labels(train_set)
-    if not (LOAD and classifier.load(MODELS_DIR + classifier.get_classifier_name() + DUMP_EXT)):
+    if not (load and classifier.load(MODELS_DIR + classifier.get_classifier_name() + DUMP_EXT)):
         print("Training " + classifier.get_classifier_name())
         classifier.train(features_train, labels_train)
-        if SAVE:
+        if save:
             if not os.path.isdir(MODELS_DIR):
                 os.mkdir(MODELS_DIR)
             classifier.save(MODELS_DIR + classifier.get_classifier_name() + DUMP_EXT)
             print("Saved " + classifier.get_classifier_name())
     else:
         print("Loaded " + classifier.get_classifier_name())
-
-    def return_majority(arr: np.ndarray) -> int:
-        """
-        Return the majority label (0 or 1) in an array
-        :param arr: The array
-        :return: 0 or 1
-        """
-        return 1 if np.sum(arr) > len(arr) / 2 else 0
 
     # Per file predictions
     print("Predicting on files...")
@@ -68,16 +87,13 @@ def run_for_classifier(classifier: Classifier, one_d: bool,
     # Per sample predictions
     print("Predicting on samples...")
     if one_d:
-        flattened_test_set = flatten(np.asarray(list(map(lambda file_features: np.asarray(
-            list(map(lambda sample_features: (sample_features, file_features[1]), file_features[0]))), test_set))))
+        flattened_test_set = to_1d(test_set)
         samples_features = extract_features(flattened_test_set)
         samples_predictions = classifier.predict(samples_features)
         samples_test_labels = extract_labels(flattened_test_set)
     else:
-        cut_test_set = flatten(np.asarray(list(map(lambda file_features: cut_file(file_features), test_set))))
+        cut_test_set = to_2d(test_set)
         cut_features = extract_features(cut_test_set)
-        cut_features = np.asarray(
-            list(map(lambda sample: sample.reshape(sample.shape[0], sample.shape[1], 1), cut_features)))
         samples_predictions = classifier.predict(cut_features)
         samples_test_labels = extract_labels(cut_test_set)
 
@@ -85,9 +101,9 @@ def run_for_classifier(classifier: Classifier, one_d: bool,
     print("Test accuracy - samples : " + str(get_accuracy(samples_predictions, samples_test_labels)))
 
 
-def main(args=None):
+def main(args: List[str] = None):
     """
-    Main function of the program
+    Main function of the program.
     :param args: The optional arguments
     """
     one_d = True
@@ -97,15 +113,15 @@ def main(args=None):
     if args[0] == "const":
         classifier = ConstantClassifier()  # ConstantClassifier
     elif args[0] == "f":
-        classifier = RFClassifier(n_estimators=200, verbose=0)  # RandomForest
+        classifier = RFClassifier(n_estimators=5, verbose=1)  # RandomForest
     elif args[0] == "n":
-        classifier = SNNClassifier(batch_size=128, num_epochs=200)  # Shallow Neural Net
+        classifier = SNNClassifier(batch_size=128, num_epochs=300, verbose=1)  # Shallow Neural Net
     elif args[0] == "svc":
         classifier = LinearClassifier(c=1, verbose=1)  # Linear SVM
     else:
-        classifier = CNNClassifier(batch_size=128, num_epochs=200)  # Convolutional Neural Net
+        classifier = CNNClassifier(batch_size=128, num_epochs=300, verbose=1)  # Convolutional Neural Net
         one_d = False
-    run_for_classifier(classifier, one_d)
+    run_for_classifier(classifier, one_d, save=SAVE, load=LOAD)
 
 
 if __name__ == "__main__":

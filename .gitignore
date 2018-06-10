@@ -1,7 +1,7 @@
-data/
+data/LibriSpeech/
 .idea/
 __pycache__/
-tensorboard
-results.txt
+tensorboard/
 output/
-models/
+.ipynb_checkpoints/
+classifier/__pycache__/

@@ -1,18 +1,22 @@
+import multiprocessing
+
 SEED = 1  # Seed for random
+N_JOBS = multiprocessing.cpu_count() - 1  # Number of jobs for multithreading methods
 NB_CLASSES = 2  # Two genders
 TRAIN_PERCENT = 0.8  # Percentage of files to use for training
+CV = 10  # Number of cross-validation splits to create
 FEATURES_NUMBER = 20  # Number of features to extract from MFCC
-MIN_SAMPLES_PER_FILE = 46  # Found by checking the shape
+FEATURES_WINDOW_SIZE = 10  # Found by checking the shape
 
 # NN settings
 VALIDATION_PERCENT = 0.2  # Percentage of files to use for validation
 BATCH_SIZE = 128  # batch size for NN
-NUM_EPOCHS = 100  # Number of epochs for NN
-FILTER_DEPTH = 32  # Filter depth for CNN
-KERNEL_SIZE = (3, 3)  # Kernel size for Convolution
+NUM_EPOCHS = 300  # Max number of epochs for NN
+FILTER_DEPTH = 32  # Filter depth for Conv2D
+KERNEL_SIZE = (3, 3)  # Kernel size for Conv2D
 LEARNING_RATE = 0.001  # Learning rate for NN
 STRIDES = (1, 1)  # Strides for Convolution
-INPUT_SHAPE = (MIN_SAMPLES_PER_FILE, FEATURES_NUMBER, 1)  # Input shape for CNN
+INPUT_SHAPE = (FEATURES_WINDOW_SIZE, FEATURES_NUMBER, 1)  # Input shape for CNN
 DATA_FORMAT = "channels_last"  # Input data format
 
 # Various directories for the project

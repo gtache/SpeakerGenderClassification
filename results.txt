@@ -1,0 +1,80 @@
+RandomForest:
+RF base input n_estimators 100 max_depth = None => 0.8949252699499605 (compress=5 => ~120MB)
+
+Shallow Neural Net:
+Tried simple Dense layer with 1024 units and dropout => not learning (not enough data probably)
+SNN no dropout, 128 units , stop epoch 64 => 0.8916249670792731, train_acc = 0.8988 => very little overfitting
+SNN no dropout, 256 units, doesn't learn
+SNN no dropout, 64 units, stop epoch 81 => 0.8757324861732947, train_acc = 0.8795 => not complex enough to learn better
+SNN no dropout, 160 units, stop epoch 83 => 0.8966289175664999, train_acc =0.9042 => very little overfitting
+SNN no dropout, 216 units, doesnt learn
+SNN no dropout, 200 units, stop 89 => 0.8997728469844615, train_acc = 0.9099 => still very little overfitting, probably close to the best we can do with a single layer
+
+Convolutional Neural Net:
+CNN BN->Conv2D(32,(3,3),(2,2))->PRELU->BN->MP2D((2,2),(2,2))->C2D->PRELU->BN->MP2D->Flatten->D(128)->PRELU->D(1)->SIGM => doesn't learn 
+
+==> Need more data, or simpler CNN (but it is already very simple), or I'm feeding garbage (but less likely given a single dense of 216 doesn't learn)
+
+CNN Conv2D->PRELU->MP2D->Flatten->D(32)->PRELU->D(1)->SIGM => doesnt learn
+
+==> change from padding 2D to max_size to cutting samples to slices of min_size (probably too much "empty" data to be able to learn)
+Same CNN as before, epoch 32 => 0.9117241379310345, train_acc = 0.9851, clearly overfitting, but still very good (was feeding garbage indeed)
+Need add dropout, batchnorm, more complex network
+
+CNN BN->C2D->PRELU->BN->MP2D->FLAT->D(32)->PRELU->D(1)->SIGM => epoch 26, 0.9206896551724137, train_acc=0.9906. As expected, faster and better learning with batchnorm
+CNN BN->C2D->PRELU->BN->MP2D->DO(0.2)->FLAT->D(32)->DO(0.5)->PRELU->D(1)->SIGM => epoch 43, 0.9296551724137931, train_acc=0.9669. As expected, slower learning but better results with dropout. Still overfit, increase dropout perhaps. As train_acc is <0.99, need more complex model
+
+Same but D(128) => epoch 35, 0.9355172413793104, train_acc=0.9736 => increase in acc for both, try increasing
+Same but D(256) => epoch 32, 0.9448275862068966, train_acc=0.9781 => increase in acc
+Same but D(512) => epoch 42, 0.9448275862068966, train_acc=0.9868 => same test_acc, but increase in overfitting and training time, revert to 256 and improve "upstream"
+(Need regularizers?)
+
+CNN BN->C2D->PRELU->BN->MP2D->DO(0.2)->C2D(2xF)->PRELU->BN->MP2D->DO(0.2)->FLAT->D(256)->DO(0.5)->PRELU->D(1)->SIGM => epoch 25, 0.9468965517241379, train_acc=0.9805
+	Small increase, but probably need regularizers
+Same but (0.1,0.1) reg on C2D => epoch 52, 0.9217241379310345, train_acc 0.9695, worse (default value of l1=l2=0 breaks the NN)
+Same but (0.01,0.01) reg on C2D => epoch 85, 0.9403448275862069, train_acc 0.9844, also worse
+
+Forget regularizers for now
+DO(0.2) => DO(0.3) : epoch 44, 0.9510344827586207, train_acc=0.9860 : better
+DO(0.4) => epoch 59, 0.9589655172413794, train_acc=0.9838 : less overfitting and better results, try 0.5 but probably too much
+DO(0.5) => epoch 31, 0.9151724137931034, train_acc=0.9602 : as expected
+
+Sometimes doesn't learn with D(>0.3). (Apparently not very possible to reproduce exactly using GPU and tensorflow at full speed https://github.com/keras-team/keras/issues/2280)
+
+CNN  ...FAT->D(512, kr=l2(0.01))->DO(0.5)->D(256, kr=l2(0.01))... => epoch 100 (need more epochs), 0.9582758620689655, train_acc = 0.9845, quite good, but still overfit
+activity_regularizer=l2(0.01) on denses => doesnt learn
+kernel_regularizer=l2(0.01) on C2D => epoch 100, 0.9579310344827586, train_acc=0.9812
+
+Don't know if we can do much better with the available data and model
+
+
+LinearSVC, C=1, iter=10000 => 0.6780435, failed to converge => normalize inputs
+
+NEW WAY OF TESTING
+Test each sample / cut in file, take the most "voted" label (e.g. file with 10 samples, predictions = [1 1 0 0 1 1 1 0 1 1] => 1)
+So before was a per sample/cut accuracy, now a per file one
+
+Constant => 0.517...
+RF (n_estimators=100) => 0.9981515711645101, nearly perfect! 200 estimators => 0.9981515711645101, same result, 10 estimators => 0.9981515711645101, same result, 1 estimator => 0.9926062846580407, 5 estimators => 0.9981515711645101
+RF seems hugely efficient for this task (features are well defined and meaningful, so RF is indeed well suited)
+
+SNN epoch 82, train_acc 0.8867, val_acc 0.8778, test_acc 1.0, perfect result
+LSVC, iter 434, 0.822550831792976, quite bad. A linear classifier is clearly not the way to go
+CNN, epoch 142, train_acc 0.9878, val_acc 0.9556, test_acc 0.9907578558225508, worse than SNN and RF strangely, but still very good. Per sample/cut result is quite better though, even though it isn't really comparable as the CNN has more "context"
+Should attain 1.0 with a bit of tuning
+
+Observations on file size : LinearClassifier = 1Ko, SNN = 81Ko, RF = 6061Ko, CNN = 217661Ko
+SNN is highly efficient performance/filesize-wise
+
+
+Final results : 
+Const : f_acc = 0.4824399260628466, s_acc = 0.5065437497537723;
+
+RF, n=5 => f_acc = 0.9981515711645101; s_acc = 0.8261513611472245;
+	n=200 => f_acc = 0.9981515711645101; s_acc = 0.8828980026001655;
+	
+LSVC, C=1 => f_acc = 0.822550831792976; s_acc = 0.7052279084426585, C=1000 => doesn't converge, f_acc & s_acc = ~0.63, so simply worse
+
+SNN, epoch 116 => f_acc = 1.0, s_acc = 0.8896741913879368
+
+CNN, epoch 121 => f_acc = 0.9870609981515711, s_acc = 0.9605699138502319
