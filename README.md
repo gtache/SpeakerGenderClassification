@@ -1,5 +1,5 @@
 # Speaker gender classification
-This assignment was to compare different classifiers for the gender recognition of speakers in audio files.    
+The goal of this assignment was to compare different classifiers for the gender recognition of speakers in audio files.    
 The files were taken from the LibriSpeech dev-clean dataset.    
 The features used are the MFCC features extracted using librosa.
 
