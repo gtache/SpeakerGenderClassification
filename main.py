@@ -11,7 +11,7 @@ from classifier.RFClassifier import RFClassifier
 from classifier.SNNClassifier import SNNClassifier
 
 SAVE = True
-LOAD = True
+LOAD = False
 
 
 def run_for_classifier(classifier: Classifier, one_d: bool, cv: int = None,
