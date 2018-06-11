@@ -32,12 +32,9 @@ class SNNClassifier(NNClassifier):
         :param num_units: The number of units for the hidden Dense layer
         :param verbose: The level of logging
         """
-        super().__init__(verbose)
+        super().__init__(validation_percentage=validation_percentage, batch_size=batch_size, num_epochs=num_epochs,
+                         learning_rate=learning_rate, verbose=verbose)
         self.input_dim = input_dim
-        self.learning_rate = learning_rate
-        self.validation_percentage = validation_percentage
-        self.batch_size = batch_size
-        self.num_epochs = num_epochs
         self.num_units = num_units
 
     def get_model(self) -> ks.models.Sequential:

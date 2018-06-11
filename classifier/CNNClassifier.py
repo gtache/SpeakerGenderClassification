@@ -35,13 +35,10 @@ class CNNClassifier(NNClassifier):
         :param strides: The strides for the Conv2D and MaxPool2D layers
         :param verbose: The level of logging
         """
-        super().__init__(verbose)
+        super().__init__(validation_percentage=validation_percentage, batch_size=batch_size, num_epochs=num_epochs,
+                         learning_rate=learning_rate, verbose=verbose)
         self.input_shape = input_shape
-        self.learning_rate = learning_rate
-        self.validation_percentage = validation_percentage
-        self.batch_size = batch_size
         self.kernel_size = kernel_size
-        self.num_epochs = num_epochs
         self.strides = strides
         self.filter_depth = filter_depth
 

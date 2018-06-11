@@ -5,7 +5,7 @@ import keras as ks
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
 
-from Settings import SEED, TENSORBOARD_DIR, MODELS_DIR
+from Settings import *
 from Utils import inherit_docstrings, get_accuracy, clamp
 from classifier.Classifier import Classifier
 
@@ -17,6 +17,23 @@ class NNClassifier(Classifier):
     """
 
     model: ks.models.Sequential = None
+
+    @abstractmethod
+    def __init__(self, validation_percentage: float = VALIDATION_PERCENT, batch_size: int = BATCH_SIZE,
+                 num_epochs: int = NUM_EPOCHS, learning_rate: float = LEARNING_RATE, verbose: int = 0):
+        """
+        Instantiates a Neural network with the given parameters
+        :param validation_percentage: The percentage of samples to use for validation
+        :param batch_size: The batch size
+        :param num_epochs: The max number of epochs to allow for training
+        :param learning_rate: The base learning rate
+        :param verbose: The level of logging
+        """
+        super().__init__(verbose)
+        self.validation_percentage = validation_percentage
+        self.batch_size = batch_size
+        self.num_epochs = num_epochs
+        self.learning_rate = learning_rate
 
     @abstractmethod
     def get_model(self) -> ks.models.Sequential:
